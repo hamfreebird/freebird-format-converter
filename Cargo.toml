@@ -1,0 +1,10 @@
+[package]
+name = "freebird-format-converter"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+eframe = "0.27"   # egui 框架
+egui = "0.27"
+rfd = "0.14"
+regex = "1.10"
