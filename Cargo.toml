@@ -8,3 +8,8 @@ eframe = "0.27"   # egui 框架
 egui = "0.27"
 rfd = "0.14"
 regex = "1.10"
+reqwest = { version = "0.11", features = ["blocking", "stream"] }
+zip = "0.6"
+which = "5"
+indicatif = "0.17"
+image = "0.25"
