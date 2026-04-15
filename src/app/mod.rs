@@ -1,3 +1,4 @@
-pub mod ui;
-pub mod widgets;
-pub mod state;
+pub(crate) mod ui;
+mod widgets;
+pub(crate) mod state;
+mod utils;

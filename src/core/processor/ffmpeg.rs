@@ -1,29 +1,135 @@
+use std::io::{BufRead, BufReader};
+use std::os::windows::process::CommandExt;
 use std::path::Path;
-use std::process::Command;
+use std::process::{Command, Stdio};
+use std::sync::mpsc;
+use std::thread;
+use regex::Regex;
+use crate::app::state::FfmpegApp;
+use crate::core::{AudioEncoderClass, EncoderInfo, FormatInfo, PixelFormatInfo, VideoEncoderClass};
 
-/// 视频编码器类别，用于适配不同的参数命名风格
-#[derive(Debug)]
-enum VideoEncoderClass {
-    // 软件编码器
-    SoftwareX264,
-    SoftwareX265,
-    SoftwareVpx,
-    SoftwareAom,
-    SoftwareSvtAv1,
-    SoftwareRav1e,
-    SoftwareTheora,
-    // 硬件编码器
-    NvidiaNvenc,
-    IntelQsv,
-    AmdAmf,
-    AppleVideotoolbox,
-    Vaapi,          // VA-API (Linux)
-    // 其他
-    Mjpeg,
-    Wmv,
-    Msmpeg4,
-    H263,
-    Other,
+/// 启动 ffmpeg 进程和读取线程
+pub(crate) fn start_ffmpeg(mut app_state: &mut FfmpegApp) {
+    // 清空之前的状态
+    app_state.output_lines.clear();
+    app_state.error_message = None;
+    app_state.is_running = true;
+
+    if let Err(e) = validate_transcode_params(
+        &app_state.selected_encoder,
+        app_state._is_video,
+        app_state._is_audio,
+        app_state._is_subtitle,
+        &app_state.selected_format,
+        &app_state.selected_pixel_format,
+        &app_state.bitrate,
+        &app_state.constant_rate_factor,
+        &app_state.gop,
+        app_state.file_path1.as_deref(),
+        app_state.folder_path1.as_deref(),
+    ) {
+        app_state.error_message = format!("Invalid parameter: {}", e).into();
+        eprintln!("Invalid parameter: {}", e);
+        // 根据错误类型决定是否继续或返回
+        return;
+    }
+
+    let build_result = build_ffmpeg_command(
+        &app_state.selected_encoder,          // encoder: &str
+        app_state._is_video,          // bool
+        app_state._is_audio,          // bool
+        app_state._is_subtitle,       // bool
+        &app_state.selected_format,        // container: &str
+        &app_state.selected_pixel_format,          // pix_fmt: &str
+        &app_state.bitrate,          // bitrate: &str
+        &app_state.constant_rate_factor,          // quality: &str
+        &app_state.coding_default,           // preset: &str
+        &app_state.gop,              // gop: &str
+        app_state.file_path1.as_deref(),
+        app_state.folder_path1.as_deref(),
+    );
+
+    // 创建命令
+    let mut cmd: Command = match build_result {
+        Ok(c) => c,
+        Err(e) => {
+            app_state.error_message = Some(format!("参数错误: {}", e));
+            app_state.is_running = false;
+            return;
+        }
+    };
+
+    // 隐藏 Windows 控制台窗口
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+
+    // 捕获 stdout 和 stderr
+    cmd.stdout(Stdio::piped());
+    cmd.stderr(Stdio::piped());
+
+    // 启动子进程
+    let mut child = match cmd.spawn() {
+        Ok(c) => c,
+        Err(e) => {
+            app_state.error_message = Some(format!("Failed run ffmpeg: {}", e));
+            app_state.is_running = false;
+            return;
+        }
+    };
+
+    // 获取输出句柄
+    let stdout = child.stdout.take().expect("Unacquired stdout");
+    let stderr = child.stderr.take().expect("Unacquired stderr");
+
+    // 创建通道用于将输出发送到 GUI 线程
+    let (tx, rx) = mpsc::channel();
+    app_state.receiver = Some(rx);
+
+    // 启动读取线程（分别读取 stdout 和 stderr）
+    let tx_clone = tx.clone();
+    thread::spawn(move || {
+        let reader = BufReader::new(stdout);
+        for line in reader.lines() {
+            match line {
+                Ok(l) => {
+                    if tx_clone.send(format!("[stdout] {}", l)).is_err() {
+                        break; // 接收端已关闭
+                    }
+                }
+                Err(_) => break,
+            }
+        }
+    });
+
+    thread::spawn(move || {
+        let reader = BufReader::new(stderr);
+        for line in reader.lines() {
+            match line {
+                Ok(l) => {
+                    if tx.send(format!("[stderr] {}", l)).is_err() {
+                        break;
+                    }
+                }
+                Err(_) => break,
+            }
+        }
+    });
+
+    app_state.child = Some(child);
+    app_state.output_lines
+        .push(">>> Start run ffmpeg ...".to_string());
+}
+
+/// 停止 ffmpeg 进程
+pub(crate) fn stop_ffmpeg(mut app_state: &mut FfmpegApp) {
+    if let Some(mut child) = app_state.child.take() {
+        let _ = child.kill(); // 强制终止
+        let _ = child.wait();
+        app_state.output_lines
+            .push(">>> User manual termination ffmpeg".to_string());
+    }
+    app_state.is_running = false;
+    app_state.receiver = None;
 }
 
 impl VideoEncoderClass {
@@ -77,32 +183,6 @@ impl VideoEncoderClass {
             _ => "-preset",
         }
     }
-}
-
-/// 音频编码器类别，用于适配质量/预设参数名
-#[derive(Debug)]
-enum AudioEncoderClass {
-    // 有损编码器
-    Libmp3lame,
-    Aac,
-    LibfdkAac,
-    Libopus,
-    Libvorbis,
-    Ac3,
-    Eac3,
-    Libtwolame,     // MP2
-    Libshine,       // MP3 固定质量
-    Libspeex,
-    Libgsm,
-    Libilbc,
-    G722,
-    G726,
-    // 无损/近无损
-    Flac,
-    Alac,
-    Pcm,            // PCM 系列 (pcm_s16le, pcm_s24le 等)
-    // 其他
-    Other,
 }
 
 impl AudioEncoderClass {
@@ -360,3 +440,143 @@ pub(crate) fn validate_transcode_params(
 
     Ok(())
 }
+
+// 获取所有可用的编码器
+pub(crate) fn get_encoders() -> Vec<EncoderInfo> {
+    let output = Command::new("ffmpeg")
+        .arg("-encoders")
+        .output()
+        .expect("Failed to execute ffmpeg -encoders");
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    parse_encoders_output(&stdout)
+}
+
+fn parse_encoders_output(output: &str) -> Vec<EncoderInfo> {
+    let mut encoders = Vec::new();
+    let re = Regex::new(r"^\s*([ VASFXBD.]+)\s+(\S+)\s+(.+)$").unwrap();
+
+    for line in output.lines() {
+        if let Some(caps) = re.captures(line) {
+            let flags = &caps[1];
+            let name = caps[2].to_string();
+            let description = caps[3].trim().to_string();
+
+            // Encoders:
+            // V..... = Video
+            // A..... = Audio
+            // S..... = Subtitle 字幕编码器
+            // .F.... = Frame-level multithreading 帧级多线程
+            // ..S... = Slice-level multithreading 片级多线程
+            // ...X.. = Codec is experimental      实验性编码器 需要-strict experimental
+            // ....B. = Supports draw_horiz_band
+            // .....D = Supports direct rendering method 1
+            // 最后两个是优化特性不用管
+            let is_video = flags.as_bytes()[0] == u8::try_from('V').unwrap();
+            let is_audio = flags.as_bytes()[0] == u8::try_from('A').unwrap();
+            let is_subtitle = flags.as_bytes()[0] == u8::try_from('S').unwrap();
+            let is_frame_multithreading = flags.as_bytes()[1] == u8::try_from('F').unwrap();
+            let is_slice_multithreading = flags.as_bytes()[2] == u8::try_from('S').unwrap();
+            let is_experimental = flags.as_bytes()[3] == u8::try_from('X').unwrap();
+
+            if (is_video || is_audio || is_subtitle)  & !(name == "=") {
+                encoders.push(EncoderInfo {
+                    name,
+                    description,
+                    is_video,
+                    is_audio,
+                    is_subtitle,
+                    is_frame_multithreading,
+                    is_slice_multithreading,
+                    is_experimental,
+                });
+            }
+        }
+    }
+    encoders
+}
+
+// 获取所有可用的容器格式
+pub(crate) fn get_formats() -> Vec<FormatInfo> {
+    let output = Command::new("ffmpeg")
+        .arg("-formats")
+        .output()
+        .expect("Failed to execute ffmpeg -formats");
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    parse_formats_output(&stdout)
+}
+
+fn parse_formats_output(output: &str) -> Vec<FormatInfo> {
+    let mut formats = Vec::new();
+    let re = Regex::new(r"^\s*([ DE]+)\s+(\S+)\s+(.+)$").unwrap();
+
+    for line in output.lines() {
+        if let Some(caps) = re.captures(line) {
+            let flags = &caps[1];
+            let name = caps[2].to_string();
+            let description = caps[3].trim().to_string();
+
+            // 标志位解析：'D' 表示可作为输入 (解复用)，'E' 表示可作为输出 (复用)
+            let can_demux = flags.contains('D');
+            let can_mux = flags.contains('E');
+
+            formats.push(FormatInfo {
+                name,
+                description,
+                can_mux,
+                can_demux,
+            });
+        }
+    }
+    formats
+}
+
+// 获取所有可用的像素格式
+pub(crate) fn get_pixel_formats() -> Vec<PixelFormatInfo> {
+    let output = Command::new("ffmpeg")
+        .arg("-pix_fmts")
+        .output()
+        .expect("Failed to execute ffmpeg -pix_fmts");
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    parse_pixel_formats_output(&stdout)
+}
+
+fn parse_pixel_formats_output(output: &str) -> Vec<PixelFormatInfo> {
+    let mut formats = Vec::new();
+    let re = Regex::new(r"^\s*([ IO.]+)\s+(\S+)\s+(\d+)\s+(\d+)").unwrap();
+
+    for line in output.lines() {
+        if let Some(caps) = re.captures(line) {
+            let flags = &caps[1];
+            let name = caps[2].to_string();
+            let _nb_components = caps[3].parse::<u32>().unwrap_or(0);
+            let bits_per_pixel = caps[4].parse::<u32>().unwrap_or(0);
+
+            // 标志位解析：'I' 表示支持作为输入，'O' 表示支持作为输出
+            let input_ok = flags.contains('I');
+            let output_ok = flags.contains('O');
+
+            formats.push(PixelFormatInfo {
+                name,
+                input_ok,
+                output_ok,
+                bits_per_pixel,
+            });
+        }
+    }
+    formats
+}
+
+// 获取所有可用的色彩名称
+fn get_colors() -> Vec<String> {
+    let output = Command::new("ffmpeg")
+        .arg("-colors")
+        .output()
+        .expect("Failed to execute ffmpeg -colors");
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    stdout.lines().map(|s| s.trim().to_string()).collect()
+}
+
