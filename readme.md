@@ -1,5 +1,13 @@
-A convenient media file format converter, based on ffmpeg, almost supports all formats of video/audio/images
+**freebird format converter**
 
+一个方便的媒体文件格式转换器，基于ffmpeg，几乎支持所有格式的视频/音频
+
+目前仅实现基本的视频编码功能
+
+---
+
+项目结构与计划
+``` text
 media_tool/
 ├── Cargo.toml
 ├── Cargo.lock
@@ -53,3 +61,4 @@ media_tool/
 │       ├── mod.rs
 │       └── messages.rs          # UiMessage 枚举 (进度、完成、错误、播放事件)
 └── build.rs                     # (可选) 编译时嵌入资源
+```
