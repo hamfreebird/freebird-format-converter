@@ -17,7 +17,29 @@ use indicatif::{ProgressBar, ProgressStyle};
 const FFMPEG_DOWNLOAD_URL: &str =
     "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip";
 
-/// 在 Windows 上检查 ffmpeg 是否可用，若不可用则引导用户下载安装。
+/// 主入口点，处理命令行参数分发
+#[cfg(windows)]
+pub fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args: Vec<String> = env::args().collect();
+    if args.len() > 1 && args[1] == "--install-ffmpeg" {
+        // 新窗口执行安装逻辑
+        if let Err(e) = install_ffmpeg() {
+            eprintln!("Installation failed: {}", e);
+            println!("\nPress any key to close this window...");
+            io::stdin().read_line(&mut String::new())?;
+            return Err(e);
+        }
+        println!("\nInstallation completed successfully.");
+        println!("Press any key to close this window...");
+        io::stdin().read_line(&mut String::new())?;
+        return Ok(());
+    }
+
+    // 普通调用路径：检查并确保 ffmpeg 可用（可能启动安装窗口）
+    ensure_ffmpeg()
+}
+
+/// 在 Windows 上检查 ffmpeg 是否可用，若不可用则引导用户在新窗口中下载安装。
 #[cfg(windows)]
 pub fn ensure_ffmpeg() -> Result<(), Box<dyn std::error::Error>> {
     // 1. 检查 ffmpeg 是否已在 PATH 中
@@ -28,7 +50,7 @@ pub fn ensure_ffmpeg() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("ffmpeg not found in PATH.");
 
-    // 2. 询问用户是否要下载安装
+    // 2. 询问用户是否要下载安装（在主窗口中进行）
     print!("Download and install ffmpeg? (Y/N): ");
     io::stdout().flush()?;
 
@@ -41,7 +63,58 @@ pub fn ensure_ffmpeg() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    // 3. 确定安装目录：%LOCALAPPDATA%\ffmpeg
+    // 3. 检查是否已经安装但未加入 PATH（避免重复下载）
+    let local_app_data = env::var("LOCALAPPDATA")
+        .map_err(|_| "Unable to retrieve LOCALAPPDATA environment variable")?;
+    let install_dir = PathBuf::from(local_app_data).join("ffmpeg");
+    let bin_dir = install_dir.join("bin");
+    let ffmpeg_exe = bin_dir.join("ffmpeg.exe");
+
+    if ffmpeg_exe.exists() {
+        println!("ffmpeg already exists at {}, adding to PATH...", install_dir.display());
+        add_to_user_path(&bin_dir)?;
+        println!("Added {} to user PATH.", bin_dir.display());
+        println!("Please reopen your command prompt for PATH changes to take effect.");
+        return Ok(());
+    }
+
+    // 4. 启动新窗口执行安装过程
+    let exe = env::current_exe()?;
+    let exe_str = exe.to_str().ok_or("Executable path contains invalid UTF-8")?;
+
+    println!("Starting installation in a new window...");
+    println!("You may close this window if you wish; the installation will continue.");
+
+    // 使用 cmd /c start "title" 启动新窗口，注意用引号包裹路径以防空格
+    let status = Command::new("cmd")
+        .args(&[
+            "/C",
+            "start",
+            "\"Installing ffmpeg\"",
+            exe_str,
+            "--install-ffmpeg",
+        ])
+        .spawn(); // 不等待子进程结束
+
+    match status {
+        Ok(_) => {
+            println!("Installation window launched successfully.");
+        }
+        Err(e) => {
+            eprintln!("Failed to launch installation window: {}", e);
+            eprintln!("Falling back to installation in current window...");
+            // 回退：在当前窗口直接执行安装
+            install_ffmpeg()?;
+        }
+    }
+
+    Ok(())
+}
+
+/// 执行实际的下载、解压、安装和 PATH 设置（在独立窗口中运行）
+#[cfg(windows)]
+fn install_ffmpeg() -> Result<(), Box<dyn std::error::Error>> {
+    // 确定安装目录：%LOCALAPPDATA%\ffmpeg
     let local_app_data = env::var("LOCALAPPDATA")
         .map_err(|_| "Unable to retrieve LOCALAPPDATA environment variable")?;
     let install_dir = PathBuf::from(local_app_data).join("ffmpeg");
@@ -57,7 +130,7 @@ pub fn ensure_ffmpeg() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    // 4. 下载 ffmpeg 压缩包（带进度条）
+    // 下载 ffmpeg 压缩包（带进度条）
     println!("Downloading ffmpeg, please wait...");
     let temp_dir = env::temp_dir().join("ffmpeg_install");
     fs::create_dir_all(&temp_dir)?;
@@ -82,7 +155,7 @@ pub fn ensure_ffmpeg() -> Result<(), Box<dyn std::error::Error>> {
     let mut buffer = [0; 8192];
 
     loop {
-        let bytes_read = response.read(&mut buffer)?; // 使用 read 而不是 copy
+        let bytes_read = response.read(&mut buffer)?;
         if bytes_read == 0 {
             break;
         }
@@ -93,7 +166,7 @@ pub fn ensure_ffmpeg() -> Result<(), Box<dyn std::error::Error>> {
     pb.finish_with_message("Download completed");
     println!();
 
-    // 5. 解压到临时目录（带进度条）
+    // 解压到临时目录（带进度条）
     println!("Extracting...");
     let extract_dir = temp_dir.join("extract");
     fs::create_dir_all(&extract_dir)?;
@@ -141,7 +214,7 @@ pub fn ensure_ffmpeg() -> Result<(), Box<dyn std::error::Error>> {
     pb_extract.finish_with_message("Extraction completed");
     println!();
 
-    // 6. 查找解压后的 ffmpeg 目录（通常为 ffmpeg-版本号-essentials_build）
+    // 查找解压后的 ffmpeg 目录
     let extracted_content: Vec<_> = fs::read_dir(&extract_dir)?
         .filter_map(Result::ok)
         .collect();
@@ -152,7 +225,6 @@ pub fn ensure_ffmpeg() -> Result<(), Box<dyn std::error::Error>> {
     let ffmpeg_root = if extracted_content.len() == 1 && extracted_content[0].path().is_dir() {
         extracted_content[0].path()
     } else {
-        // 如果有多个文件/目录，尝试查找包含 bin 子目录的
         extracted_content
             .iter()
             .find(|entry| entry.path().join("bin").exists())
@@ -160,13 +232,12 @@ pub fn ensure_ffmpeg() -> Result<(), Box<dyn std::error::Error>> {
             .ok_or("Could not locate ffmpeg directory in extracted contents")?
     };
 
-    // 7. 移动到安装目录
+    // 移动到安装目录
     if install_dir.exists() {
         fs::remove_dir_all(&install_dir)?;
     }
     fs::create_dir_all(&install_dir)?;
 
-    // 复制解压后的内容到 install_dir
     copy_dir_all(&ffmpeg_root, &install_dir)?;
 
     // 清理临时文件
@@ -174,7 +245,7 @@ pub fn ensure_ffmpeg() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("ffmpeg has been installed to {}", install_dir.display());
 
-    // 8. 将 bin 目录添加到用户 PATH
+    // 将 bin 目录添加到用户 PATH
     add_to_user_path(&bin_dir)?;
     println!("Added {} to user PATH.", bin_dir.display());
     println!("Please reopen your command prompt for PATH changes to take effect.");
@@ -192,7 +263,6 @@ fn add_to_user_path(dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
 
     let current_path = if output.status.success() {
         let stdout = String::from_utf8_lossy(&output.stdout);
-        // 解析 "PATH    REG_EXPAND_SZ    value" 或 "PATH    REG_SZ    value"
         stdout
             .lines()
             .find(|line| line.contains("PATH"))
@@ -203,7 +273,6 @@ fn add_to_user_path(dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
         String::new()
     };
 
-    // 如果已包含，则无需添加
     let dir_str = dir.to_string_lossy().to_string();
     let paths: Vec<&str> = current_path.split(';').collect();
     if paths.iter().any(|p| Path::new(p) == dir) {
@@ -211,14 +280,12 @@ fn add_to_user_path(dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    // 构造新的 PATH
     let new_path = if current_path.is_empty() {
         dir_str
     } else {
         format!("{};{}", current_path, dir_str)
     };
 
-    // 使用 setx 设置用户环境变量
     let status = Command::new("setx")
         .args(&["PATH", &new_path])
         .status()?;

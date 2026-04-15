@@ -1,24 +1,31 @@
-pub mod logic;
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
+pub mod app;
+pub mod core;
+pub mod services;
+pub mod channels;
 
 use eframe::egui;
+use image::GenericImageView;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::sync::mpsc::{self, TryRecvError};
 use std::thread;
-use image::GenericImageView;
 
 // 用于在 Windows 上隐藏命令行窗口
-use crate::logic::{
+use self::core::utils::dependent::ensure_ffmpeg;
+use crate::core::processor::ffmpeg::{build_ffmpeg_command, validate_transcode_params};
+use crate::core::utils::config::{
     EncoderInfo, FormatInfo, PixelFormatInfo, get_encoders, get_formats, get_pixel_formats,
 };
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
-use crate::logic::dependent::ensure_ffmpeg;
-use crate::logic::execute::{build_ffmpeg_command, validate_transcode_params};
 
 fn main() -> Result<(), eframe::Error> {
-    ensure_ffmpeg().expect("Opus, something went wrong! The program will continue to run but it may go wrong.");
+    ensure_ffmpeg().expect(
+        "Opus, something went wrong! The program will continue to run but it may go wrong.",
+    );
     let _icon_data = load_icon_data();
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
@@ -79,10 +86,10 @@ struct FfmpegApp {
     selected_pixel_format: String,
 
     // --- 详细参数 ---
-    bitrate: String,                  // 目标比特率
-    constant_rate_factor: String,     // 恒定质量模式 0-51
+    bitrate: String,              // 目标比特率
+    constant_rate_factor: String, // 恒定质量模式 0-51
     coding_default: String,       // 编码预设
-    gop: String,                      // GOP关键帧间隔
+    gop: String,                  // GOP关键帧间隔
     _is_video: bool,
     _is_audio: bool,
     _is_subtitle: bool,
@@ -153,7 +160,8 @@ impl eframe::App for FfmpegApp {
                     }
                     Err(e) => {
                         self.is_running = false;
-                        self.error_message = Some(format!("Check the process state failure: {}", e));
+                        self.error_message =
+                            Some(format!("Check the process state failure: {}", e));
                         self.child = None;
                     }
                 }
@@ -630,16 +638,16 @@ impl FfmpegApp {
         }
 
         let build_result = build_ffmpeg_command(
-            &self.selected_encoder,          // encoder: &str
-            self._is_video,          // bool
-            self._is_audio,          // bool
-            self._is_subtitle,       // bool
-            &self.selected_format,        // container: &str
-            &self.selected_pixel_format,          // pix_fmt: &str
-            &self.bitrate,          // bitrate: &str
-            &self.constant_rate_factor,          // quality: &str
-            &self.coding_default,           // preset: &str
-            &self.gop,              // gop: &str
+            &self.selected_encoder,      // encoder: &str
+            self._is_video,              // bool
+            self._is_audio,              // bool
+            self._is_subtitle,           // bool
+            &self.selected_format,       // container: &str
+            &self.selected_pixel_format, // pix_fmt: &str
+            &self.bitrate,               // bitrate: &str
+            &self.constant_rate_factor,  // quality: &str
+            &self.coding_default,        // preset: &str
+            &self.gop,                   // gop: &str
             self.file_path1.as_deref(),
             self.folder_path1.as_deref(),
         );
@@ -746,7 +754,7 @@ fn load_fonts(ctx: &egui::Context) {
         .families
         .entry(egui::FontFamily::Proportional)
         .or_default();
-    proportional_fonts.clear();               // 清除默认字体
+    proportional_fonts.clear(); // 清除默认字体
     proportional_fonts.push("Ubuntu-Light".to_owned());
     proportional_fonts.push("simhei".to_owned());
 
