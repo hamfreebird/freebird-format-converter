@@ -24,10 +24,10 @@ pub fn process_message(state: &mut FfmpegApp, sender: UiInboxSender<UiMessages>,
             );
         },
         UiMessages::StartFFMPEG => {
-            core::processor::ffmpeg::start_ffmpeg(state);
+            crate::services::ffmpeg_service::start_ffmpeg(state);
         },
         UiMessages::StopFFMPEG => {
-            core::processor::ffmpeg::stop_ffmpeg(state);
+            crate::services::ffmpeg_service::stop_ffmpeg(state);
         },
         _ => {}
     }

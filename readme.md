@@ -24,7 +24,8 @@ media_tool/
 │   │   │   ├── task_panel.rs    # 任务队列与进度
 │   │   │   ├── preview.rs       # 预览与播放控制
 │   │   │   ├── settings.rs      # 设置对话框
-│   │   │   └── dialogs.rs       # 文件选择、确认等模态框
+│   │   │   ├── dialogs.rs       # 文件选择、确认等模态框
+│   │   │   └── main_window.rs   # 主页面
 │   │   └── widgets/             # 自定义 egui 控件
 │   │       ├── mod.rs
 │   │       ├── timeline.rs      # 剪辑时间轴
@@ -49,7 +50,9 @@ media_tool/
 │   │   │   ├── mpv.rs           # MPV IPC 命令构建与响应解析
 │   │   │   └── window.rs        # 播放窗口生命周期管理
 │   │   └── utils/               # 通用工具
-│   │       ├── config.rs        # 配置读写 (serde)
+│   │       ├── mod.rs
+│   │       ├── config.rs        # 配置读写
+│   │       ├── dependent.rs     # ffmpeg下载服务
 │   │       ├── scanner.rs       # 文件系统扫描与媒体识别
 │   │       └── metadata.rs      # 调用 ffprobe 提取元数据
 │   ├── services/                # 服务层 (异步执行，通过通道返回结果)
@@ -60,5 +63,5 @@ media_tool/
 │   └── channels/                # 跨线程通信定义
 │       ├── mod.rs
 │       └── messages.rs          # UiMessage 枚举 (进度、完成、错误、播放事件)
-└── build.rs                     # (可选) 编译时嵌入资源
+└── build.rs                     # 编译时嵌入资源
 ```
