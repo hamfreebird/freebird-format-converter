@@ -1,9 +1,9 @@
 use crate::channels::messages::UiMessages;
+use crate::core::{EncoderInfo, FormatInfo, PixelFormatInfo};
 use crate::truncate_str;
 use egui::Ui;
 use egui_inbox::UiInboxSender;
 use std::path::PathBuf;
-use crate::core::{EncoderInfo, FormatInfo, PixelFormatInfo};
 
 pub fn render_main_window(
     ui: &mut Ui,
@@ -31,7 +31,7 @@ pub fn render_main_window(
     gop: &mut String,
     output_lines: &mut Vec<String>,) {
     egui::Frame::default()
-        .inner_margin(egui::Margin::same(10.0))
+        .inner_margin(egui::Margin::same(10i8))
         .show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.label("Log: ");
@@ -65,9 +65,7 @@ pub fn render_main_window(
                             selected_pixel_format,
                             _is_video,
                             _is_audio,
-                            _is_subtitle,
-                            sender.clone(),
-                            is_running);
+                            _is_subtitle);
 
             ui.separator();
 
@@ -134,7 +132,7 @@ fn render_top_area(
             // 使用 add_sized 限制标签的宽度，防止长文件名破坏布局
             ui.add_sized(
                 [picker_width - 70.0, ui.spacing().interact_size.y],
-                egui::Label::new(path1_text).truncate(true),
+                egui::Label::new(path1_text).truncate(),
             );
 
             // 浏览按钮
@@ -156,7 +154,7 @@ fn render_top_area(
 
             ui.add_sized(
                 [picker_width - 70.0, ui.spacing().interact_size.y],
-                egui::Label::new(path2_text).truncate(true),
+                egui::Label::new(path2_text).truncate(),
             );
 
             if ui.button("Browse...").clicked() {
@@ -190,25 +188,23 @@ fn render_mid_area(
     encoder_name: Vec<String>,
     format_name: Vec<String>,
     pixel_format_names: Vec<String>,
-    mut selected_encoder: &mut String,
-    mut selected_format: &mut String,
-    mut selected_pixel_format: &mut String,
+    selected_encoder: &mut String,
+    selected_format: &mut String,
+    selected_pixel_format: &mut String,
     mut _is_video: &mut bool,
     mut _is_audio: &mut bool,
     mut _is_subtitle: &mut bool,
-    sender: UiInboxSender<UiMessages>,
-    is_running: bool,
 ) {
     // ---------- 中间区域 ----------
     ui.horizontal(|ui| {
         ui.label("Encoders:");
-        let combo_encoder_response = egui::ComboBox::from_id_source("encoder")
+        let combo_encoder_response = egui::ComboBox::from_id_salt("encoder")
             .selected_text(truncate_str(&selected_encoder, 100))
             .width(150.0)
             .show_ui(ui, |ui| {
                 for (index, name) in encoder_name.iter().enumerate() {
                     let display_text = truncate_str(name, 100);
-                    let is_selected = *selected_encoder == *name;
+                    let mut is_selected = *selected_encoder == *name;
                     // 使用 selectable_label 获得 Response
                     let response = ui.selectable_label(is_selected, display_text);
                     // 始终显示完整提示，显示对应的description
@@ -238,7 +234,7 @@ fn render_mid_area(
                         *_is_video = encoder_info.get(index).unwrap().is_video;
                         *_is_audio = encoder_info.get(index).unwrap().is_audio;
                         *_is_subtitle = encoder_info.get(index).unwrap().is_subtitle;
-                        ui.memory_mut(|mem| mem.close_popup());
+                        ui.checkbox(&mut is_selected, ());
                     }
                 }
             });
@@ -275,13 +271,13 @@ fn render_mid_area(
 
         ui.add_space(5.0);
         ui.label("Layouts:");
-        let combo_format_response = egui::ComboBox::from_id_source("format")
+        let combo_format_response = egui::ComboBox::from_id_salt("format")
             .selected_text(truncate_str(&selected_format, 100))
             .width(200.0)
             .show_ui(ui, |ui| {
                 for (index, name) in format_name.iter().enumerate() {
                     let display_text = truncate_str(name, 100);
-                    let is_selected = *selected_format == *name;
+                    let mut is_selected = *selected_format == *name;
                     // 使用 selectable_label 获得 Response
                     let response = ui.selectable_label(is_selected, display_text);
                     // 始终显示完整提示，显示对应的description
@@ -298,7 +294,7 @@ fn render_mid_area(
                     // 手动处理点击事件
                     if response.clicked() {
                         *selected_format = name.clone();
-                        ui.memory_mut(|mem| mem.close_popup());
+                        ui.checkbox(&mut is_selected, ());
                     }
                 }
             });
@@ -325,7 +321,7 @@ fn render_mid_area(
 
         ui.add_space(5.0);
         ui.label("PixFmts:");
-        let combo_pixel_response = egui::ComboBox::from_id_source("pixel")
+        let combo_pixel_response = egui::ComboBox::from_id_salt("pixel")
             .selected_text(&*selected_pixel_format)
             .width(100.0)
             .show_ui(ui, |ui| {

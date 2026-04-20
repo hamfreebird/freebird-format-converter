@@ -3,7 +3,7 @@ use std::env;
 #[cfg(windows)]
 use std::fs::{self, File};
 #[cfg(windows)]
-use std::io::{self, Write, BufRead, Read};
+use std::io::{self, Write, Read};
 #[cfg(windows)]
 use std::path::{Path, PathBuf};
 #[cfg(windows)]

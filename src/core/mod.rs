@@ -79,3 +79,9 @@ pub(crate) struct PixelFormatInfo {
     pub(crate) output_ok: bool,     // 是否支持作为输出
     pub(crate) bits_per_pixel: u32, // 每像素比特数
 }
+
+#[derive(Debug, Clone)]
+pub(crate) struct ColorInfo {
+    pub(crate) name: String,
+    pub(crate) var: Vec<u8>,        // 每位 RGB
+}

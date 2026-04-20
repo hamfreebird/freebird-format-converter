@@ -7,7 +7,7 @@ use crate::app::state::FfmpegApp;
 use crate::core::processor::ffmpeg::{build_ffmpeg_command, validate_transcode_params};
 
 /// 启动 ffmpeg 进程和读取线程
-pub(crate) fn start_ffmpeg(mut app_state: &mut FfmpegApp) {
+pub(crate) fn start_ffmpeg(app_state: &mut FfmpegApp) {
     // 清空之前的状态
     app_state.output_lines.clear();
     app_state.error_message = None;
@@ -119,7 +119,7 @@ pub(crate) fn start_ffmpeg(mut app_state: &mut FfmpegApp) {
 }
 
 /// 停止 ffmpeg 进程
-pub(crate) fn stop_ffmpeg(mut app_state: &mut FfmpegApp) {
+pub(crate) fn stop_ffmpeg(app_state: &mut FfmpegApp) {
     if let Some(mut child) = app_state.child.take() {
         let _ = child.kill(); // 强制终止
         let _ = child.wait();

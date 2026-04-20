@@ -1,13 +1,12 @@
-use egui_inbox::UiInboxSender;
 use crate::app::state::FfmpegApp;
 use crate::channels::messages::UiMessages;
 use crate::core;
 
 pub mod messages;
 
-pub fn process_message(state: &mut FfmpegApp, sender: UiInboxSender<UiMessages>, msg: UiMessages) {
+pub fn process_message(state: &mut FfmpegApp, msg: UiMessages) {
     match msg {
-        UiMessages::PickFile(id) => {
+        UiMessages::PickFile(_id) => {
             core::utils::scanner::pick_file(
                 &mut state.file_picker_tx,
                 &mut state.file_picker_rx,
@@ -15,7 +14,7 @@ pub fn process_message(state: &mut FfmpegApp, sender: UiInboxSender<UiMessages>,
                 1
             );
         },
-        UiMessages::PickFolder(id) => {
+        UiMessages::PickFolder(_id) => {
             core::utils::scanner::pick_folder(
                 &mut state.folder_picker_tx,
                 &mut state.folder_picker_rx,

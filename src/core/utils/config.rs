@@ -1,14 +1,16 @@
+use std::sync::Arc;
+
 pub(crate) fn load_fonts(ctx: &egui::Context) {
     let mut fonts = egui::FontDefinitions::default();
 
     // 注册多个字体数据
     fonts.font_data.insert(
         "Ubuntu-Light".to_owned(),
-        egui::FontData::from_static(include_bytes!("../../../assets/fonts/Ubuntu-Light.ttf")),
+        Arc::from(egui::FontData::from_static(include_bytes!("../../../assets/fonts/Ubuntu-Light.ttf"))),
     );
     fonts.font_data.insert(
         "simhei".to_owned(),
-        egui::FontData::from_static(include_bytes!("../../../assets/fonts/simhei.ttf")),
+        Arc::from(egui::FontData::from_static(include_bytes!("../../../assets/fonts/simhei.ttf"))),
     );
 
     // 为 Proportional 家族设置优先级顺序

@@ -1,6 +1,5 @@
-use crate::core::{AudioEncoderClass, EncoderInfo, FormatInfo, PixelFormatInfo, VideoEncoderClass};
+use crate::core::{AudioEncoderClass, ColorInfo, EncoderInfo, FormatInfo, PixelFormatInfo, VideoEncoderClass};
 use regex::Regex;
-use std::io::BufRead;
 use std::path::Path;
 use std::process::Command;
 
@@ -442,13 +441,36 @@ fn parse_pixel_formats_output(output: &str) -> Vec<PixelFormatInfo> {
 }
 
 // 获取所有可用的色彩名称
-fn get_colors() -> Vec<String> {
+pub(crate) fn get_colors() -> Vec<ColorInfo> {
     let output = Command::new("ffmpeg")
         .arg("-colors")
         .output()
         .expect("Failed to execute ffmpeg -colors");
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    stdout.lines().map(|s| s.trim().to_string()).collect()
+    parse_colors_output(&stdout)
+}
+
+fn parse_colors_output(output: &str) -> Vec<ColorInfo> {
+    let mut colors = Vec::new();
+    let re = Regex::new(r"^([A-Za-z]+(?:[ -][A-Za-z]+)*)\s+(#[0-9A-Fa-f]{6})$").unwrap();
+
+    for line in output.lines() {
+        if let Some(caps) = re.captures(line) {
+            let name = caps[1].to_string();
+            let rgb_hex = &caps[2].strip_prefix('#').unwrap();
+            let var = vec![
+                u8::from_str_radix(&rgb_hex[0..2], 16).map_err(|_| ""),
+                u8::from_str_radix(&rgb_hex[2..4], 16).map_err(|_| ""),
+                u8::from_str_radix(&rgb_hex[4..6], 16).map_err(|_| ""),
+            ].into_iter().filter_map(Result::ok).collect();
+
+            colors.push(ColorInfo {
+                name,
+                var,
+            });
+        }
+    }
+    colors
 }
 

@@ -2,13 +2,9 @@ use std::path::PathBuf;
 use std::sync::mpsc;
 use egui_inbox::UiInbox;
 use crate::channels::messages::UiMessages;
-use crate::core::{EncoderInfo, FormatInfo, PixelFormatInfo};
+use crate::core::{ColorInfo, EncoderInfo, FormatInfo, PixelFormatInfo};
 
-pub(crate) struct AppState {
-    pub(crate) ffmpeg_app: bool,
-}
-
-pub(crate) struct FfmpegApp {
+pub struct FfmpegApp {
     /// 是否正在运行 ffmpeg
     pub(crate) is_running: bool,
     /// 子进程句柄（用于检查退出状态和终止）
@@ -35,21 +31,24 @@ pub(crate) struct FfmpegApp {
     pub(crate) folder_path1: Option<PathBuf>,
     pub(crate) folder_path2: Option<PathBuf>,
 
-    // --- 中间下拉框 ---
+    // --- 从 ffmpeg 读取的支持信息 ---
     // 所有信息
     pub(crate) encoder_info: Vec<EncoderInfo>,
     pub(crate) format_info: Vec<FormatInfo>,
     pub(crate) pixel_format_info: Vec<PixelFormatInfo>,
+    pub(crate) color_info: Vec<ColorInfo>,
 
-    // 所有可用的列表
+    // 名称
     pub(crate) encoder_name: Vec<String>,
     pub(crate) format_name: Vec<String>,
     pub(crate) pixel_format_names: Vec<String>,
+    pub(crate) color_names: Vec<String>,
 
     // 当前选中的项
     pub(crate) selected_encoder: String,
     pub(crate) selected_format: String,
     pub(crate) selected_pixel_format: String,
+    pub(crate) selected_color: String,
 
     // --- 详细参数 ---
     pub(crate) bitrate: String,                  // 目标比特率
@@ -61,7 +60,8 @@ pub(crate) struct FfmpegApp {
     pub(crate) _is_subtitle: bool,
 
     // --- 底部输出框 ---
-    /// 累积的输出日志（每行一条）
     pub(crate) output_lines: Vec<String>,
+
+    // --- egui_inbox ---
     pub(crate) inbox: UiInbox<UiMessages>,
 }

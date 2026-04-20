@@ -5,26 +5,20 @@ pub mod core;
 pub mod services;
 pub mod channels;
 
-use eframe::egui;
-use egui_inbox::UiInbox;
-use image::GenericImageView;
-use std::io::BufRead;
-use std::sync::mpsc::TryRecvError;
-
-use self::app::state::{FfmpegApp, AppState};
+use self::app::state::FfmpegApp;
 use self::app::ui;
 use self::core::utils::dependent::ensure_ffmpeg;
 use crate::channels::process_message;
-use crate::core::processor::ffmpeg::{get_encoders, get_formats, get_pixel_formats};
+use crate::core::processor::ffmpeg::{get_colors, get_encoders, get_formats, get_pixel_formats};
 use crate::core::utils::config::{load_fonts, load_icon_data};
-#[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
+use eframe::{egui, Frame};
+use egui::Ui;
+use egui_inbox::UiInbox;
+use std::sync::mpsc::TryRecvError;
 
 fn main() -> Result<(), eframe::Error> {
+    env_logger::init();
     ensure_ffmpeg().expect("Opus, something went wrong! The program will continue to run but it may go wrong.");
-    let mut app_state = AppState {
-        ffmpeg_app: true
-    };
     let _icon_data = load_icon_data();
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
@@ -37,14 +31,16 @@ fn main() -> Result<(), eframe::Error> {
     eframe::run_native(
         "freebird format converter v0.1",
         options,
-        Box::new(|_cc| Box::new(FfmpegApp::new(_cc))),
+        Box::new(|cc| {
+            egui_extras::install_image_loaders(&cc.egui_ctx);
+            Ok(Box::new(FfmpegApp::new(cc)))
+        }),
     )
 }
 
 impl Default for FfmpegApp {
     fn default() -> Self {
         let mut app = Self {
-            // ... 初始化其他字段 ...
             is_running: false,
             child: None,
             receiver: None,
@@ -62,12 +58,15 @@ impl Default for FfmpegApp {
             encoder_info: vec![],
             format_info: vec![],
             pixel_format_info: vec![],
+            color_info: vec![],
             encoder_name: Vec::new(),
             format_name: Vec::new(),
             pixel_format_names: Vec::new(),
+            color_names: vec![],
             selected_encoder: String::new(),
             selected_format: String::new(),
             selected_pixel_format: String::new(),
+            selected_color: "".to_string(),
             bitrate: 2000.to_string(),
             constant_rate_factor: 21.to_string(),
             coding_default: "".to_string(),
@@ -78,16 +77,34 @@ impl Default for FfmpegApp {
             output_lines: vec![],
             inbox: UiInbox::new(),
         };
-        // 注意：此处直接调用会阻塞 GUI 启动，最好在另一个线程加载
-        // 简单演示可在此调用，但正式应用推荐异步加载
+        // 阻塞 GUI 启动,加载 ffmpeg
         app.load_ffmpeg_data();
         app
     }
 }
 
 impl eframe::App for FfmpegApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // 1. 检查子进程是否结束（如果正在运行）
+    fn logic(&mut self, _ui: &egui::Context, _frame: &mut Frame) {
+        let messages = self.inbox.read_without_ctx();
+        for msg in messages {
+            process_message(self, msg)
+        }
+    }
+
+    fn ui(&mut self, ui: &mut Ui, _frame: &mut Frame) {
+        // 绘制 UI
+        egui::CentralPanel::default().show_inside(ui, |ui| {
+            ui::render(ui, self);
+        });
+
+        // 持续请求重绘
+        if self.is_running || self.receiver.is_some() {
+            ui.request_repaint();
+        }
+    }
+
+    fn update(&mut self, _ctx: &egui::Context, _frame: &mut Frame) {
+        // 检查子进程是否结束（如果正在运行）
         if self.is_running {
             if let Some(ref mut child) = self.child {
                 match child.try_wait() {
@@ -114,7 +131,7 @@ impl eframe::App for FfmpegApp {
         self.check_file_picker();
         self.check_folder_picker();
 
-        // 2. 从通道接收新的输出行（无论是否正在运行，确保清空缓冲区）
+        // 从通道接收新的输出行（无论是否正在运行，确保清空缓冲区）
         if let Some(receiver) = &self.receiver {
             loop {
                 match receiver.try_recv() {
@@ -127,46 +144,6 @@ impl eframe::App for FfmpegApp {
                     }
                 }
             }
-        }
-
-        // 3. 绘制 UI
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui::main_window::render_main_window(
-                ui,
-                Option::from(1u8),
-                &self.file_path1,
-                &self.folder_path1,
-                self.inbox.sender(),
-                self.is_running,
-                self.encoder_info.clone(),
-                self.format_info.clone(),
-                self.pixel_format_info.clone(),
-                self.encoder_name.clone(),
-                self.format_name.clone(),
-                self.pixel_format_names.clone(),
-                &mut self.selected_encoder,
-                &mut self.selected_format,
-                &mut self.selected_pixel_format,
-                &mut self._is_video,
-                &mut self._is_audio,
-                &mut self._is_subtitle,
-                self.error_message.clone(),
-                &mut self.bitrate,                  // 目标比特率
-                &mut self.constant_rate_factor,     // 恒定质量模式 0-51
-                &mut self.coding_default,       // 编码预设
-                &mut self.gop,
-                &mut self.output_lines,
-            );
-        });
-
-        let messages = self.inbox.read_without_ctx();
-        for msg in messages {
-            process_message(self, self.inbox.sender(), msg)
-        }
-
-        // 持续请求重绘，以便及时接收新输出（只要有通道存在或进程在运行）
-        if self.is_running || self.receiver.is_some() {
-            ctx.request_repaint();
         }
     }
 }
@@ -222,20 +199,19 @@ impl FfmpegApp {
         self.encoder_info = get_encoders();
         self.format_info = get_formats();
         self.pixel_format_info = get_pixel_formats();
+        self.color_info = get_colors();
 
         // 提取名称
         self.encoder_name = self.encoder_info.iter().map(|e| e.name.clone()).collect();
         self.format_name = self.format_info.iter().map(|f| f.name.clone()).collect();
-        self.pixel_format_names = self
-            .pixel_format_info
-            .iter()
-            .map(|p| p.name.clone())
-            .collect();
+        self.pixel_format_names = self.pixel_format_info.iter().map(|p| p.name.clone()).collect();
+        self.color_names = self.color_info.iter().map(|p| p.name.clone()).collect();
 
         // 设置默认选中第一项（如果有的话），否则为空字符串
         self.selected_encoder = self.encoder_name.first().cloned().unwrap_or_default();
         self.selected_format = self.format_name.first().cloned().unwrap_or_default();
         self.selected_pixel_format = self.pixel_format_names.first().cloned().unwrap_or_default();
+        self.selected_color = self.color_names.first().cloned().unwrap_or_default();
     }
 }
 

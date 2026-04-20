@@ -5,9 +5,9 @@ use std::thread;
 // TODO:处理文件路径发送失败的情况
 
 /// 触发文件选择对话框
-pub(crate) fn pick_file(mut file_picker_tx: &mut Option<mpsc::SyncSender<PathBuf>>,
-                        mut file_picker_rx: &mut Option<mpsc::Receiver<PathBuf>>,
-                        mut active_picker: &mut Option<u8>,
+pub(crate) fn pick_file(file_picker_tx: &mut Option<mpsc::SyncSender<PathBuf>>,
+                        file_picker_rx: &mut Option<mpsc::Receiver<PathBuf>>,
+                        active_picker: &mut Option<u8>,
                         picker_id: u8) {
     let (tx, rx) = mpsc::sync_channel(1);
     *file_picker_tx = Some(tx.clone());
@@ -27,10 +27,10 @@ pub(crate) fn pick_file(mut file_picker_tx: &mut Option<mpsc::SyncSender<PathBuf
 }
 
 /// 触发文件夹选择对话框
-pub(crate) fn pick_folder(mut folder_picker_tx: &mut Option<mpsc::SyncSender<PathBuf>>,
-                   mut folder_picker_rx: &mut Option<mpsc::Receiver<PathBuf>>,
-                   mut active_folder_picker: &mut Option<u8>,
-                   picker_id: u8) {
+pub(crate) fn pick_folder(folder_picker_tx: &mut Option<mpsc::SyncSender<PathBuf>>,
+                          folder_picker_rx: &mut Option<mpsc::Receiver<PathBuf>>,
+                          active_folder_picker: &mut Option<u8>,
+                          picker_id: u8) {
     let (tx, rx) = mpsc::sync_channel(1);
     *folder_picker_tx = Some(tx.clone());
     *folder_picker_rx = Some(rx);
