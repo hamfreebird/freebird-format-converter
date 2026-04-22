@@ -14,6 +14,9 @@ pub struct FfmpegApp {
     /// 错误信息（例如启动失败）
     pub(crate) error_message: Option<String>,
 
+    // --- 页面管理 ---
+    pub(crate) window_state: WindowState,
+
     // --- 顶部输入区 ---
     pub(crate) file_path1: Option<PathBuf>, // 第一个文件选择框的路径
     pub(crate) file_path2: Option<PathBuf>, // 第二个文件选择框的路径
@@ -64,4 +67,11 @@ pub struct FfmpegApp {
 
     // --- egui_inbox ---
     pub(crate) inbox: UiInbox<UiMessages>,
+}
+
+// 页面管理
+#[derive(PartialEq)]
+pub(crate) enum WindowState {
+    MainWindow,
+    ChipWindow,
 }

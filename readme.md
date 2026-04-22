@@ -25,7 +25,8 @@ media_tool/
 │   │   │   ├── preview.rs       # 预览与播放控制
 │   │   │   ├── settings.rs      # 设置对话框
 │   │   │   ├── dialogs.rs       # 文件选择、确认等模态框
-│   │   │   └── main_window.rs   # 主页面
+│   │   │   ├── main_window.rs   # 主页面
+│   │   │   └── chip.rs          # 切片处理
 │   │   └── widgets/             # 自定义 egui 控件
 │   │       ├── mod.rs
 │   │       ├── timeline.rs      # 剪辑时间轴

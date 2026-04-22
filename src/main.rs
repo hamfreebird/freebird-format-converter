@@ -5,7 +5,7 @@ pub mod core;
 pub mod services;
 pub mod channels;
 
-use self::app::state::FfmpegApp;
+use self::app::state::{FfmpegApp, WindowState};
 use self::app::ui;
 use self::core::utils::dependent::ensure_ffmpeg;
 use crate::channels::process_message;
@@ -45,6 +45,7 @@ impl Default for FfmpegApp {
             child: None,
             receiver: None,
             error_message: None,
+            window_state: WindowState::MainWindow,
             file_path1: None,
             file_path2: None,
             file_picker_tx: None,
@@ -55,26 +56,26 @@ impl Default for FfmpegApp {
             active_folder_picker: None,
             folder_path1: None,
             folder_path2: None,
-            encoder_info: vec![],
-            format_info: vec![],
-            pixel_format_info: vec![],
-            color_info: vec![],
+            encoder_info: Vec::new(),
+            format_info: Vec::new(),
+            pixel_format_info: Vec::new(),
+            color_info: Vec::new(),
             encoder_name: Vec::new(),
             format_name: Vec::new(),
             pixel_format_names: Vec::new(),
-            color_names: vec![],
+            color_names: Vec::new(),
             selected_encoder: String::new(),
             selected_format: String::new(),
             selected_pixel_format: String::new(),
-            selected_color: "".to_string(),
+            selected_color: String::new(),
             bitrate: 2000.to_string(),
             constant_rate_factor: 21.to_string(),
-            coding_default: "".to_string(),
+            coding_default: String::new(),
             gop: 120.to_string(),
             _is_video: false,
             _is_audio: false,
             _is_subtitle: false,
-            output_lines: vec![],
+            output_lines: Vec::new(),
             inbox: UiInbox::new(),
         };
         // 阻塞 GUI 启动,加载 ffmpeg

@@ -1,43 +1,51 @@
 use std::collections::VecDeque;
 use egui::Ui;
-use crate::app::state::FfmpegApp;
-use crate::app::ui;
-use crate::channels::messages::UiMessages;
+use crate::app::state::{FfmpegApp, WindowState};
 
-mod dialogs;
-mod media_library;
-mod menu;
-mod preview;
-mod setting;
-mod task_panel;
+pub mod dialogs;
+pub mod media_library;
+pub mod menu;
+pub mod preview;
+pub mod setting;
+pub mod task_panel;
 pub mod main_window;
+pub mod chip;
 
 pub fn render(ui: &mut Ui,
               state: &mut FfmpegApp) {
-    main_window::render_main_window(
-        ui,
-        Option::from(1u8),
-        &state.file_path1,
-        &state.folder_path1,
-        state.inbox.sender(),
-        state.is_running,
-        state.encoder_info.clone(),
-        state.format_info.clone(),
-        state.pixel_format_info.clone(),
-        state.encoder_name.clone(),
-        state.format_name.clone(),
-        state.pixel_format_names.clone(),
-        &mut state.selected_encoder,
-        &mut state.selected_format,
-        &mut state.selected_pixel_format,
-        &mut state._is_video,
-        &mut state._is_audio,
-        &mut state._is_subtitle,
-        state.error_message.clone(),
-        &mut state.bitrate,                  // 目标比特率
-        &mut state.constant_rate_factor,     // 恒定质量模式 0-51
-        &mut state.coding_default,       // 编码预设
-        &mut state.gop,
-        &mut state.output_lines,
-    )
+    if state.window_state == WindowState::MainWindow {
+        // 渲染主页面：视频格式转换页面
+        main_window::render_main_window(
+            ui,
+            Option::from(1u8),
+            &state.file_path1,
+            &state.folder_path1,
+            state.inbox.sender(),
+            state.is_running,
+            state.encoder_info.clone(),
+            state.format_info.clone(),
+            state.pixel_format_info.clone(),
+            state.encoder_name.clone(),
+            state.format_name.clone(),
+            state.pixel_format_names.clone(),
+            &mut state.selected_encoder,
+            &mut state.selected_format,
+            &mut state.selected_pixel_format,
+            &mut state._is_video,
+            &mut state._is_audio,
+            &mut state._is_subtitle,
+            state.error_message.clone(),
+            &mut state.bitrate,                  // 目标比特率
+            &mut state.constant_rate_factor,     // 恒定质量模式 0-51
+            &mut state.coding_default,       // 编码预设
+            &mut state.gop,
+            &mut state.output_lines,
+        )
+    } else if state.window_state == WindowState::ChipWindow {
+        // 渲染切片处理页面
+        chip::render_chip_window(
+            ui,
+            state.error_message.clone(),
+        )
+    }
 }
