@@ -15,7 +15,7 @@ impl FilterEditor {
     /// 渲染滤镜链编辑器
     pub fn render(&mut self, ui: &mut Ui, chain: &mut FilterChain) {
         ui.horizontal(|ui| {
-            ui.heading("🎨 Filter Chain");
+            ui.heading("Filter Chain");
             ui.add_space(8.0);
             if ui.button("+ Add Filter").clicked() {
                 // 默认添加缩放滤镜作为起点
@@ -84,13 +84,13 @@ fn render_filter_card(
                 ui.colored_label(Color32::from_rgb(0, 180, 216), filter_name(filter));
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.button("✕").clicked() {
+                    if ui.button("X").clicked() {
                         *remove_index = Some(index);
                     }
-                    if ui.button("↓").clicked() {
+                    if ui.button("v").clicked() {
                         *move_down = Some(index);
                     }
-                    if ui.button("↑").clicked() {
+                    if ui.button("^").clicked() {
                         *move_up = Some(index);
                     }
                 });

@@ -18,7 +18,7 @@ pub fn render_preview_panel(
 
     let mut window_open = true;
 
-    egui::Window::new("🎬 Preview")
+    egui::Window::new("Preview")
         .open(&mut window_open)
         .resizable(true)
         .collapsible(true)
@@ -89,32 +89,32 @@ fn render_controls(
     ui.horizontal(|ui| {
         ui.centered_and_justified(|ui| {
             // 停止
-            if ui.button("⏹").clicked() {
+            if ui.button("Stop").clicked() {
                 on_stop();
             }
 
             // 快退 10 秒
-            if ui.button("⏪").clicked() {
+            if ui.button("<<").clicked() {
                 if let Some(pos) = state.time_pos {
                     on_seek((pos - 10.0).max(0.0));
                 }
             }
 
             // 播放/暂停
-            let play_label = if state.paused || !is_playing { "▶" } else { "⏸" };
+            let play_label = if state.paused || !is_playing { "Play" } else { "Pause" };
             if ui.button(play_label).clicked() {
                 on_play_pause();
             }
 
             // 快进 10 秒
-            if ui.button("⏩").clicked() {
+            if ui.button(">>").clicked() {
                 if let (Some(pos), Some(dur)) = (state.time_pos, state.duration) {
                     on_seek((pos + 10.0).min(dur));
                 }
             }
 
             // 截图
-            if ui.button("📷").clicked() {
+            if ui.button("Shot").clicked() {
                 on_screenshot();
             }
         });
@@ -124,7 +124,7 @@ fn render_controls(
 
     // ── 音量控制 ──
     ui.horizontal(|ui| {
-        ui.label("🔊");
+        ui.label("Vol");
         let mut vol = state.volume;
         let vol_response = ui.add(
             egui::Slider::new(&mut vol, 0.0..=100.0)

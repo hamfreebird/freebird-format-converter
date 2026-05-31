@@ -1,3 +1,4 @@
+use crate::app::state::WindowState;
 use crate::channels::messages::UiMessages;
 use egui_inbox::UiInboxSender;
 
@@ -12,35 +13,37 @@ pub fn render_menu_bar(
         egui::menu::bar(ui, |ui| {
             // ── File 菜单 ──
             ui.menu_button("File", |ui| {
-                if ui.button("📂 Add File...").clicked() {
+                if ui.button("Add File...").clicked() {
                     let _ = _sender.send(UiMessages::PickFile(None));
                     ui.close_menu();
                 }
-                if ui.button("📁 Add Folder...").clicked() {
+                if ui.button("Add Folder...").clicked() {
                     let _ = _sender.send(UiMessages::PickFolder(None));
                     ui.close_menu();
                 }
                 ui.separator();
-                if ui.button("❌ Exit").clicked() {
+                if ui.button("Exit").clicked() {
                     std::process::exit(0);
                 }
             });
 
             // ── View 菜单 ──
             ui.menu_button("View", |ui| {
-                if ui.button("🔄 Main Window").clicked() {
+                if ui.button("Main Window").clicked() {
+                    let _ = _sender.send(UiMessages::SwitchWindow(WindowState::MainWindow));
                     ui.close_menu();
                 }
-                if ui.button("🔪 Chip Window").clicked() {
+                if ui.button("Chip Window").clicked() {
+                    let _ = _sender.send(UiMessages::SwitchWindow(WindowState::ChipWindow));
                     ui.close_menu();
                 }
                 ui.separator();
-                if ui.button("📋 Task Panel").clicked() {
+                if ui.button("Task Panel").clicked() {
                     let _ = _sender.send(UiMessages::ToggleTaskPanel);
                     ui.close_menu();
                 }
                 ui.separator();
-                if ui.button("⚙ Settings...").clicked() {
+                if ui.button("Settings...").clicked() {
                     let _ = _sender.send(UiMessages::ToggleSettings);
                     ui.close_menu();
                 }
@@ -48,10 +51,12 @@ pub fn render_menu_bar(
 
             // ── Help 菜单 ──
             ui.menu_button("Help", |ui| {
-                if ui.button("ℹ About...").clicked() {
+                if ui.button("About...").clicked() {
+                    let _ = _sender.send(UiMessages::ToggleAbout);
                     ui.close_menu();
                 }
-                if ui.button("🔍 Check FFmpeg Version").clicked() {
+                if ui.button("Check FFmpeg Version").clicked() {
+                    let _ = _sender.send(UiMessages::CheckFFmpegVersion);
                     ui.close_menu();
                 }
             });

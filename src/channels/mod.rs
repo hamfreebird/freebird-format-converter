@@ -38,6 +38,37 @@ pub fn process_message(state: &mut FfmpegApp, msg: UiMessages) {
         UiMessages::ToggleTaskPanel => {
             state.show_task_panel = !state.show_task_panel;
         }
+        UiMessages::ToggleAbout => {
+            state.show_about = !state.show_about;
+        }
+        UiMessages::SwitchWindow(target) => {
+            state.window_state = target;
+        }
+        UiMessages::CheckFFmpegVersion => {
+            // 同步调用 ffmpeg -version 获取版本信息
+            match std::process::Command::new("ffmpeg")
+                .arg("-version")
+                .output()
+            {
+                Ok(output) => {
+                    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+                    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+                    state.ffmpeg_version_text = if stdout.is_empty() {
+                        stderr
+                    } else {
+                        stdout
+                    };
+                }
+                Err(e) => {
+                    state.ffmpeg_version_text = format!(
+                        "Failed to run ffmpeg -version: {}\n\
+                         Please make sure ffmpeg is installed and in your PATH.",
+                        e
+                    );
+                }
+            }
+            state.show_ffmpeg_version = true;
+        }
 
         // ── 元数据 ──
         UiMessages::MetadataLoaded(result) => {

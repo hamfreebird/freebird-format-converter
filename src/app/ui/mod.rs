@@ -88,4 +88,11 @@ pub fn render(ui: &mut Ui,
         &ctx,
         &mut state.show_about,
     );
+
+    // FFmpeg 版本对话框
+    dialogs::show_ffmpeg_version_dialog(
+        &ctx,
+        &mut state.show_ffmpeg_version,
+        &state.ffmpeg_version_text,
+    );
 }

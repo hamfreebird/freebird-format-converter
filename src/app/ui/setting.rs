@@ -14,7 +14,7 @@ pub fn render_settings_dialog(
     let mut window_open = true;
     let mut close_requested = false;
 
-    egui::Window::new("⚙ Settings")
+    egui::Window::new("Settings")
         .open(&mut window_open)
         .resizable(false)
         .collapsible(false)

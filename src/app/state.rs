@@ -84,11 +84,15 @@ pub struct FfmpegApp {
     pub(crate) show_task_panel: bool,
     /// 是否显示关于对话框
     pub(crate) show_about: bool,
+    /// 是否显示 FFmpeg 版本对话框
+    pub(crate) show_ffmpeg_version: bool,
+    /// FFmpeg 版本信息文本
+    pub(crate) ffmpeg_version_text: String,
 }
 
 // 页面管理
-#[derive(PartialEq)]
-pub(crate) enum WindowState {
+#[derive(Clone, Debug, PartialEq)]
+pub enum WindowState {
     MainWindow,
     ChipWindow,
 }

@@ -15,7 +15,7 @@ pub fn render_task_panel(
 
     let mut window_open = true;
 
-    egui::Window::new("📋 Task Queue")
+    egui::Window::new("Task Queue")
         .open(&mut window_open)
         .resizable(true)
         .collapsible(true)
@@ -91,7 +91,7 @@ fn render_task_list(
 
                     // 取消按钮（仅活跃任务）
                     if is_active {
-                        if ui.button("✕").clicked() {
+                        if ui.button("X").clicked() {
                             on_cancel(id);
                         }
                     }
@@ -110,7 +110,7 @@ pub fn render_task_list_embedded(
     mut on_clear: impl FnMut(),
 ) {
     ui.separator();
-    ui.collapsing("📋 Task Queue", |ui| {
+    ui.collapsing("Task Queue", |ui| {
         render_task_list(ui, jobs, &mut on_cancel, &mut on_clear);
     });
 }

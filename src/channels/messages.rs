@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use crate::app::state::WindowState;
 use crate::core::utils::MediaMetadata;
 
 pub enum UiMessages {
@@ -19,6 +20,12 @@ pub enum UiMessages {
     ToggleSettings,
     /// 切换任务面板显示/隐藏
     ToggleTaskPanel,
+    /// 切换关于对话框显示/隐藏
+    ToggleAbout,
+    /// 切换窗口状态（主窗口 / 切片窗口）
+    SwitchWindow(WindowState),
+    /// 检查 FFmpeg 版本
+    CheckFFmpegVersion,
 
     // ── 播放器事件 ──
     /// 播放事件（开始、停止等）

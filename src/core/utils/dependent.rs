@@ -8,7 +8,6 @@ use std::io::{self, Write, Read};
 use std::path::{Path, PathBuf};
 #[cfg(windows)]
 use std::process::Command;
-#[cfg(windows)]
 use which::which;
 #[cfg(windows)]
 use indicatif::{ProgressBar, ProgressStyle};
@@ -316,8 +315,21 @@ fn copy_dir_all(src: &Path, dst: &Path) -> io::Result<()> {
     Ok(())
 }
 
-// 非 Windows 平台提供一个空实现或 panic
+// 非 Windows 平台（Linux/macOS）通过系统包管理器或 which 检测 ffmpeg
 #[cfg(not(windows))]
 pub fn ensure_ffmpeg() -> Result<(), Box<dyn std::error::Error>> {
-    panic!("This function is only supported on Windows.");
+    if which("ffmpeg").is_ok() {
+        println!("ffmpeg is already installed and found in PATH.");
+        return Ok(());
+    }
+
+    println!("ffmpeg not found in PATH.");
+    println!("Please install ffmpeg using your system package manager:");
+    println!("  Arch:   sudo pacman -S ffmpeg");
+    println!("  Debian: sudo apt install ffmpeg");
+    println!("  Fedora: sudo dnf install ffmpeg");
+    println!("The program will continue but conversion features may not work.");
+
+    // 不 panic，允许程序继续运行（用户可在设置中指定自定义 ffmpeg 路径）
+    Ok(())
 }

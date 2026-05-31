@@ -57,7 +57,7 @@ pub fn render_main_window(
             if let Some(meta) = metadata {
                 ui.separator();
                 ui.horizontal(|ui| {
-                    ui.label("📋 Media Info:");
+                    ui.label("Media Info:");
                     ui.add_space(5.0);
                     ui.label(meta.summary());
                 });

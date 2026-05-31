@@ -15,7 +15,7 @@ pub fn show_about_dialog(ctx: &egui::Context, show: &mut bool) {
         .min_width(320.0)
         .show(ctx, |ui| {
             ui.vertical_centered(|ui| {
-                ui.heading("🎬 freebird format converter");
+                ui.heading("freebird format converter");
                 ui.label("v0.1.0");
                 ui.add_space(8.0);
                 ui.label("A convenient media file format converter");
@@ -54,7 +54,7 @@ pub fn show_overwrite_dialog(
     let mut result = None;
     let mut window_open = true;
 
-    egui::Window::new("⚠ File already exists")
+    egui::Window::new("File already exists")
         .open(&mut window_open)
         .resizable(false)
         .collapsible(false)
@@ -101,7 +101,7 @@ pub fn show_error_dialog(
     let mut window_open = true;
     let mut close_clicked = false;
 
-    egui::Window::new(format!("❌ {}", title))
+    egui::Window::new(title.to_string())
         .open(&mut window_open)
         .resizable(true)
         .collapsible(false)
@@ -112,6 +112,47 @@ pub fn show_error_dialog(
             egui::ScrollArea::vertical().show(ui, |ui| {
                 ui.monospace(message);
             });
+            ui.add_space(12.0);
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if ui.button("OK").clicked() {
+                    close_clicked = true;
+                }
+            });
+        });
+
+    if !window_open || close_clicked {
+        *show = false;
+    }
+}
+
+/// FFmpeg 版本信息对话框
+pub fn show_ffmpeg_version_dialog(
+    ctx: &egui::Context,
+    show: &mut bool,
+    version_text: &str,
+) {
+    if !*show {
+        return;
+    }
+
+    let mut window_open = true;
+    let mut close_clicked = false;
+
+    egui::Window::new("FFmpeg Version")
+        .open(&mut window_open)
+        .resizable(true)
+        .collapsible(false)
+        .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+        .min_width(500.0)
+        .max_height(500.0)
+        .show(ctx, |ui| {
+            ui.heading("FFmpeg Version Information");
+            ui.add_space(8.0);
+            egui::ScrollArea::vertical()
+                .auto_shrink([false; 2])
+                .show(ui, |ui| {
+                    ui.monospace(version_text);
+                });
             ui.add_space(12.0);
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 if ui.button("OK").clicked() {

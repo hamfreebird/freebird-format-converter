@@ -3,11 +3,11 @@ use egui::{Color32, Rect, Response, Ui, Vec2};
 /// 作业状态徽章
 pub fn status_badge(ui: &mut Ui, status: &str) -> Response {
     let (bg_color, text) = match status {
-        "Pending" => (Color32::from_rgb(100, 100, 100), "⏳ Pending"),
-        "Running" => (Color32::from_rgb(59, 130, 246), "▶ Running"),
-        "Completed" => (Color32::from_rgb(34, 197, 94), "✓ Completed"),
-        "Failed" => (Color32::from_rgb(239, 68, 68), "✗ Failed"),
-        "Cancelled" => (Color32::from_rgb(251, 191, 36), "⊘ Cancelled"),
+        "Pending" => (Color32::from_rgb(100, 100, 100), "Pending"),
+        "Running" => (Color32::from_rgb(59, 130, 246), "Running"),
+        "Completed" => (Color32::from_rgb(34, 197, 94), "Completed"),
+        "Failed" => (Color32::from_rgb(239, 68, 68), "Failed"),
+        "Cancelled" => (Color32::from_rgb(251, 191, 36), "Cancelled"),
         _ => (Color32::from_rgb(150, 150, 150), status),
     };
 

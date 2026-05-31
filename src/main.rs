@@ -85,6 +85,8 @@ impl Default for FfmpegApp {
             show_settings: false,
             show_task_panel: false,
             show_about: false,
+            show_ffmpeg_version: false,
+            ffmpeg_version_text: String::new(),
         };
         // 阻塞 GUI 启动,加载 ffmpeg
         app.load_ffmpeg_data();
